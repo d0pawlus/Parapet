@@ -21,7 +21,7 @@ double ProfileNow()
 namespace
 {
     const UINT WM_WEATHER = WM_APP + 1, WM_TRAY = WM_APP + 2;
-    const wchar_t* AppName = L"Parapet 0.1.0";
+    const wchar_t* AppName = L"Parapet 0.1.1";
     const wchar_t* RunKey = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
     const wchar_t* RunValue = L"Parapet";
 
