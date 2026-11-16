@@ -206,59 +206,10 @@ namespace
 
     HICON MakeIcon()
     {
-        // a maple leaf, rasterised with 4x4 supersampling
-        static const float leaf[][2] = {
-            { 0, -0.5f }, { 0.08f, -0.28f }, { 0.22f, -0.36f }, { 0.18f, -0.12f }, { 0.42f, -0.18f }, { 0.34f, 0.0f },
-            { 0.46f, 0.06f }, { 0.22f, 0.18f }, { 0.26f, 0.30f }, { 0.04f, 0.24f }, { 0.03f, 0.5f }, { -0.03f, 0.5f },
-            { -0.04f, 0.24f }, { -0.26f, 0.30f }, { -0.22f, 0.18f }, { -0.46f, 0.06f }, { -0.34f, 0.0f }, { -0.42f, -0.18f },
-            { -0.18f, -0.12f }, { -0.22f, -0.36f }, { -0.08f, -0.28f },
-        };
-        const int n = ARRAYSIZE(leaf);
+        // the pixel-art window from parapet.rc, in the frame that matches the tray's icon size for this DPI
         int size = GetSystemMetrics(SM_CXSMICON);
-        BITMAPV5HEADER bi = {};
-        bi.bV5Size = sizeof bi;
-        bi.bV5Width = size;
-        bi.bV5Height = -size;
-        bi.bV5Planes = 1;
-        bi.bV5BitCount = 32;
-        bi.bV5Compression = BI_RGB;
-        void* bits = nullptr;
-        HDC screenDc = GetDC(nullptr);
-        HBITMAP color = CreateDIBSection(screenDc, reinterpret_cast<BITMAPINFO*>(&bi), DIB_RGB_COLORS, &bits, nullptr, 0);
-        ReleaseDC(nullptr, screenDc);
-        uint32_t* px = static_cast<uint32_t*>(bits);
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                int hits = 0;
-                for (int sy = 0; sy < 4; sy++)
-                {
-                    for (int sx = 0; sx < 4; sx++)
-                    {
-                        float fx = ((x + (sx + 0.5f) / 4) / size - 0.5f) * 1.05f;
-                        float fy = ((y + (sy + 0.5f) / 4) / size - 0.5f) * 1.05f;
-                        bool in = false;
-                        for (int i = 0, j = n - 1; i < n; j = i++)
-                        {
-                            if ((leaf[i][1] > fy) != (leaf[j][1] > fy) &&
-                                fx < (leaf[j][0] - leaf[i][0]) * (fy - leaf[i][1]) / (leaf[j][1] - leaf[i][1]) + leaf[i][0])
-                                in = !in;
-                        }
-                        hits += in;
-                    }
-                }
-                uint32_t a = hits * 255 / 16;
-                // premultiplied orange
-                px[y * size + x] = (a << 24) | ((236 * a / 255) << 16) | ((112 * a / 255) << 8) | (24 * a / 255);
-            }
-        }
-        HBITMAP mask = CreateBitmap(size, size, 1, 1, nullptr);
-        ICONINFO ii = { TRUE, 0, 0, mask, color };
-        HICON icon = CreateIconIndirect(&ii);
-        DeleteObject(mask);
-        DeleteObject(color);
-        return icon;
+        HICON icon = HICON(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(1), IMAGE_ICON, size, size, LR_DEFAULTCOLOR));
+        return icon ? icon : LoadIconW(nullptr, IDI_APPLICATION);
     }
 
     void AddTrayIcon()

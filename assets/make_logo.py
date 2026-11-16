@@ -110,4 +110,42 @@ out = Path(__file__).parent
 img.save(out / "logo-32.png")
 for s in (64, 128, 256, 512, 1024):
     img.resize((s, s), Image.NEAREST).save(out / f"logo-{s}.png")
+
+# --- hand-drawn 16x16 variant for the small tray icon ---------------------------------
+KEY = {
+    "o": "out", "l": "woodL", "w": "wood", "d": "woodD", "y": "sun", "s": "sun_sky", "g": "orange",
+    "c": "cloud", "r": "rain_sky", "b": "drop", "n": "snow_sky", "f": "flake", "W": "snow",
+    "t": "storm_sky", "z": "bolt",
+}
+TL = ["yyss", "yssg", "ssss", "sgss"]
+TR = ["cccc", "rbrr", "rrrb", "rbrr"]
+BL = ["nfnn", "nnnf", "fnnn", "WWWW"]
+BR = ["tttt", "ttzt", "tzzt", "tztt"]
+rows16 = [".oooooooooooooo.", ".o" + "l" * 11 + "do."]
+rows16 += [".ol" + TL[i] + "ww" + TR[i] + "do." for i in range(4)]
+rows16 += [".ol" + "w" * 10 + "do."] * 2
+rows16 += [".ol" + BL[i] + "ww" + BR[i] + "do." for i in range(4)]
+rows16 += ["o" * 16, "o" + "l" * 14 + "o", "o" + "d" * 14 + "o", "o" * 16]
+small = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+for y, row in enumerate(rows16):
+    assert len(row) == 16, (y, row)
+    for x, ch in enumerate(row):
+        if ch != ".":
+            small.putpixel((x, y), C[KEY[ch]] + (255,))
+small.save(out / "icon-16.png")
+
+# --- Windows icon: pixel-exact frames where the scale is whole, smooth ones in between --
+frames = {16: small, 32: img}
+for s in (64, 128, 256):
+    frames[s] = img.resize((s, s), Image.NEAREST)
+big = img.resize((256, 256), Image.NEAREST)
+for s in (20, 24):                       # tray at 125%/150% DPI: keep the 16 px drawing crisp, centred
+    frame = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    frame.alpha_composite(small, ((s - 16) // 2, (s - 16) // 2))
+    frames[s] = frame
+for s in (40, 48):
+    frames[s] = big.resize((s, s), Image.LANCZOS)
+sizes = sorted(frames)
+frames[256].save(out / "parapet.ico", format="ICO", sizes=[(s, s) for s in sizes],
+                 append_images=[frames[s] for s in sizes if s != 256])
 print("ok")
