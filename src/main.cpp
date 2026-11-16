@@ -27,22 +27,22 @@ namespace
 
     struct Choice { const wchar_t* key; const wchar_t* label; };
     const Choice Modes[] = {
-        { L"Auto", L"Automatycznie (wg pogody)" }, { L"Leaves", L"Jesienne liście" }, { L"Rain", L"Deszcz" },
-        { L"Snow", L"Śnieg" }, { L"Storm", L"Jesienna burza" }, { L"Off", L"Wyłączone" },
+        { L"Auto", L"Automatic (follows the weather)" }, { L"Leaves", L"Autumn leaves" }, { L"Rain", L"Rain" },
+        { L"Snow", L"Snow" }, { L"Storm", L"Autumn storm" }, { L"Off", L"Off" },
     };
     const float Intensities[] = { 0.5f, 1.0f, 1.75f, 3.0f };
-    const wchar_t* IntensityLabels[] = { L"Mała", L"Średnia", L"Duża", L"Ekstremalna" };
+    const wchar_t* IntensityLabels[] = { L"Low", L"Medium", L"High", L"Extreme" };
     const int FpsChoices[] = { 20, 30, 60 };
     const wchar_t* CritterLabels[CritterKinds] = {
-        L"Jeż (jesienią, zbiera liście)", L"Gąsienica (zjada leżące liście)", L"Lis polarny (wyskakuje z zasp)",
-        L"Przebiśniegi (gdy się ociepla)", L"Ślimak (po deszczu)", L"Żaba (skacze po kałużach)",
-        L"Rudzik (przysiada na oknach)", L"Wiewiórka (z żołędziem)", L"Grzyby (wyrastają z błota)",
+        L"Hedgehog (autumn, gathers leaves)", L"Caterpillar (eats fallen leaves)", L"Arctic fox (leaps out of snowdrifts)",
+        L"Snowdrops (when it gets warmer)", L"Snail (after rain)", L"Frog (hops between puddles)",
+        L"Robin (perches on windows)", L"Squirrel (with an acorn)", L"Mushrooms (sprout from the mud)",
     };
     // render scale per quality level; Ultra also draws soft leaf shadows (twice the leaf sprites)
     const float QualityScales[] = { 0.5f, 0.75f, 1.0f, 1.0f };
     const wchar_t* QualityLabels[] = {
-        L"Jakość: niska (½ rozdzielczości, najlżejsza)", L"Jakość: średnia (¾ rozdzielczości)",
-        L"Jakość: wysoka (pełna rozdzielczość)", L"Jakość: ultra (pełna + cienie liści)",
+        L"Quality: low (½ resolution, lightest)", L"Quality: medium (¾ resolution)",
+        L"Quality: high (full resolution)", L"Quality: ultra (full + leaf shadows)",
     };
 
     enum : UINT
@@ -342,41 +342,41 @@ namespace
         HMENU modes = CreatePopupMenu();
         for (UINT i = 0; i < ARRAYSIZE(Modes); i++)
             AppendMenuW(modes, MF_STRING | (s.mode == Modes[i].key ? MF_CHECKED : 0), IdMode + i, Modes[i].label);
-        AppendMenuW(m, MF_POPUP, UINT_PTR(modes), L"Efekt");
+        AppendMenuW(m, MF_POPUP, UINT_PTR(modes), L"Effect");
 
         HMENU levels = CreatePopupMenu();
         for (UINT i = 0; i < ARRAYSIZE(Intensities); i++)
             AppendMenuW(levels, MF_STRING | (std::fabs(s.intensity - Intensities[i]) < 0.01f ? MF_CHECKED : 0), IdIntensity + i, IntensityLabels[i]);
-        AppendMenuW(m, MF_POPUP, UINT_PTR(levels), L"Intensywność");
+        AppendMenuW(m, MF_POPUP, UINT_PTR(levels), L"Intensity");
 
         HMENU perf = CreatePopupMenu();
         for (UINT i = 0; i < ARRAYSIZE(FpsChoices); i++)
         {
             wchar_t label[32];
-            swprintf_s(label, L"%d klatek/s", FpsChoices[i]);
+            swprintf_s(label, L"%d fps", FpsChoices[i]);
             AppendMenuW(perf, MF_STRING | (s.fps == FpsChoices[i] ? MF_CHECKED : 0), IdFps + i, label);
         }
         AppendMenuW(perf, MF_SEPARATOR, 0, nullptr);
         for (UINT i = 0; i < ARRAYSIZE(QualityScales); i++)
             AppendMenuW(perf, MF_STRING | (s.quality == int(i) ? MF_CHECKED : 0), IdQuality + i, QualityLabels[i]);
         AppendMenuW(perf, MF_SEPARATOR, 0, nullptr);
-        AppendMenuW(perf, MF_STRING | (s.batterySaver ? MF_CHECKED : 0), IdBattery, L"Oszczędzaj na baterii (20 kl/s, EcoQoS)");
-        AppendMenuW(perf, MF_STRING | (s.pauseOnFullscreen ? MF_CHECKED : 0), IdPauseFullscreen, L"Pauza przy aplikacjach pełnoekranowych");
-        AppendMenuW(m, MF_POPUP, UINT_PTR(perf), L"Wydajność");
+        AppendMenuW(perf, MF_STRING | (s.batterySaver ? MF_CHECKED : 0), IdBattery, L"Save battery (20 fps, EcoQoS)");
+        AppendMenuW(perf, MF_STRING | (s.pauseOnFullscreen ? MF_CHECKED : 0), IdPauseFullscreen, L"Pause for full-screen apps");
+        AppendMenuW(m, MF_POPUP, UINT_PTR(perf), L"Performance");
 
         HMENU rare = CreatePopupMenu();
-        AppendMenuW(rare, MF_STRING | (s.rareEvents ? MF_CHECKED : 0), IdRare, L"Pojawiają się same (rzadko, zależnie od pogody)");
+        AppendMenuW(rare, MF_STRING | (s.rareEvents ? MF_CHECKED : 0), IdRare, L"Appear on their own (rarely, depending on the weather)");
         AppendMenuW(rare, MF_SEPARATOR, 0, nullptr);
-        AppendMenuW(rare, MF_STRING, IdCritter + CritterKinds, L"Przywołaj losowe teraz");
+        AppendMenuW(rare, MF_STRING, IdCritter + CritterKinds, L"Summon a random one now");
         for (UINT i = 0; i < CritterKinds; i++) AppendMenuW(rare, MF_STRING, IdCritter + i, CritterLabels[i]);
-        AppendMenuW(m, MF_POPUP, UINT_PTR(rare), L"Rzadkie zjawiska");
+        AppendMenuW(m, MF_POPUP, UINT_PTR(rare), L"Rare visitors");
 
-        AppendMenuW(m, MF_STRING | (s.ignoreMaximized ? MF_CHECKED : 0), IdIgnoreMax, L"Przelatuj przez zmaksymalizowane okna");
-        AppendMenuW(m, MF_STRING, IdRefresh, L"Odśwież pogodę");
-        AppendMenuW(m, MF_STRING, IdEdit, L"Ustawienia (miasto, współrzędne)…");
-        AppendMenuW(m, MF_STRING | (AutostartEnabled() ? MF_CHECKED : 0), IdAutostart, L"Uruchamiaj razem z Windows");
+        AppendMenuW(m, MF_STRING | (s.ignoreMaximized ? MF_CHECKED : 0), IdIgnoreMax, L"Fall through maximized windows");
+        AppendMenuW(m, MF_STRING, IdRefresh, L"Refresh weather");
+        AppendMenuW(m, MF_STRING, IdEdit, L"Settings (city, coordinates)…");
+        AppendMenuW(m, MF_STRING | (AutostartEnabled() ? MF_CHECKED : 0), IdAutostart, L"Start with Windows");
         AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
-        AppendMenuW(m, MF_STRING, IdExit, L"Zakończ");
+        AppendMenuW(m, MF_STRING, IdExit, L"Exit");
 
         POINT pt;
         GetCursorPos(&pt);
@@ -425,7 +425,7 @@ namespace
             OutputDebugStringW(line);
             if (g_profile.frames > 0)
             {
-                static const wchar_t* names[] = { L"okna", L"kursor", L"podmuchy", L"czastki", L"kopczyki", L"zwierzeta", L"render", L"odstep" };
+                static const wchar_t* names[] = { L"windows", L"cursor", L"gusts", L"particles", L"piles", L"critters", L"render", L"gap" };
                 std::wstring prof = L"  ms avg/max:";
                 for (int i = 0; i < 8; i++)
                 {

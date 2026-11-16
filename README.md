@@ -62,8 +62,7 @@ Measured on a 4K display plus a second monitor:
 A ready-to-run `Parapet.exe` (Windows 10/11, x64) is on the
 [Releases](https://github.com/d0pawlus/Parapet/releases) page. Just run it; settings are saved to
 `settings.ini` next to the exe. The exe isn't code-signed yet, so Windows SmartScreen may warn you:
-click "More info" → "Run anyway". The tray menu is currently in Polish only; an English UI is planned,
-as are macOS and Linux versions.
+click "More info" → "Run anyway". macOS and Linux versions are planned.
 
 ## Building
 

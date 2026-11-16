@@ -86,7 +86,7 @@ static bool HttpGet(const wchar_t* host, const std::wstring& path, bool https, s
         ok = status == 200;
         if (!ok) error = L"HTTP " + std::to_wstring(status);
     }
-    else error = L"brak połączenia z " + std::wstring(host);
+    else error = L"cannot connect to " + std::wstring(host);
     if (r) WinHttpCloseHandle(r);
     if (c) WinHttpCloseHandle(c);
     WinHttpCloseHandle(s);
@@ -139,26 +139,26 @@ static std::wstring UrlEncode(const std::wstring& s)
 
 std::wstring WeatherState::Describe() const
 {
-    if (!ok) return L"Pogoda: brak danych" + (error.empty() ? L"" : L" (" + error + L")");
-    const wchar_t* d = L"Pogoda";
-    if (code == 0) d = L"bezchmurnie";
-    else if (code <= 2) d = L"częściowe zachmurzenie";
-    else if (code == 3) d = L"pochmurno";
-    else if (code == 45 || code == 48) d = L"mgła";
-    else if (code >= 51 && code <= 55) d = L"mżawka";
-    else if (code == 56 || code == 57 || code == 66 || code == 67) d = L"marznący deszcz";
-    else if (code == 61) d = L"słaby deszcz";
-    else if (code == 63) d = L"deszcz";
-    else if (code == 65) d = L"ulewa";
-    else if (code == 71) d = L"słaby śnieg";
-    else if (code == 73) d = L"śnieg";
-    else if (code == 75) d = L"intensywny śnieg";
-    else if (code == 77) d = L"ziarna śniegu";
-    else if (code >= 80 && code <= 82) d = L"przelotny deszcz";
-    else if (code == 85 || code == 86) d = L"przelotny śnieg";
-    else if (code >= 95) d = L"burza";
+    if (!ok) return L"Weather: no data" + (error.empty() ? L"" : L" (" + error + L")");
+    const wchar_t* d = L"weather";
+    if (code == 0) d = L"clear sky";
+    else if (code <= 2) d = L"partly cloudy";
+    else if (code == 3) d = L"overcast";
+    else if (code == 45 || code == 48) d = L"fog";
+    else if (code >= 51 && code <= 55) d = L"drizzle";
+    else if (code == 56 || code == 57 || code == 66 || code == 67) d = L"freezing rain";
+    else if (code == 61) d = L"light rain";
+    else if (code == 63) d = L"rain";
+    else if (code == 65) d = L"heavy rain";
+    else if (code == 71) d = L"light snow";
+    else if (code == 73) d = L"snow";
+    else if (code == 75) d = L"heavy snow";
+    else if (code == 77) d = L"snow grains";
+    else if (code >= 80 && code <= 82) d = L"rain showers";
+    else if (code == 85 || code == 86) d = L"snow showers";
+    else if (code >= 95) d = L"thunderstorm";
     wchar_t buf[256];
-    swprintf_s(buf, L"%s: %.0f°C, %s, wiatr %.0f km/h", place.c_str(), tempC, d, windKmh);
+    swprintf_s(buf, L"%s: %.0f°C, %s, wind %.0f km/h", place.c_str(), tempC, d, windKmh);
     return buf;
 }
 
@@ -233,20 +233,20 @@ bool WeatherService::Locate(std::wstring& error)
     {
         lat = _wtof(s.latitude.c_str());
         lon = _wtof(s.longitude.c_str());
-        place = s.city.empty() ? L"Twoja lokalizacja" : s.city;
+        place = s.city.empty() ? L"Your location" : s.city;
         return true;
     }
     std::string body;
     if (!s.city.empty())
     {
-        if (!HttpGet(L"geocoding-api.open-meteo.com", L"/v1/search?count=1&language=pl&format=json&name=" + UrlEncode(s.city), true, body, error))
+        if (!HttpGet(L"geocoding-api.open-meteo.com", L"/v1/search?count=1&language=en&format=json&name=" + UrlEncode(s.city), true, body, error))
             return false;
-        if (!JsonNumber(body, "latitude", lat) || !JsonNumber(body, "longitude", lon)) { error = L"nie znaleziono miasta"; return false; }
+        if (!JsonNumber(body, "latitude", lat) || !JsonNumber(body, "longitude", lon)) { error = L"city not found"; return false; }
         place = JsonString(body, "name");
         return true;
     }
     if (!HttpGet(L"ip-api.com", L"/json/?fields=status,city,lat,lon", false, body, error)) return false;
-    if (!JsonNumber(body, "lat", lat) || !JsonNumber(body, "lon", lon)) { error = L"nieznana lokalizacja"; return false; }
+    if (!JsonNumber(body, "lat", lat) || !JsonNumber(body, "lon", lon)) { error = L"unknown location"; return false; }
     place = JsonString(body, "city");
     return true;
 }
@@ -272,7 +272,7 @@ WeatherState WeatherService::Fetch()
     std::string body;
     if (!HttpGet(L"api.open-meteo.com", path, true, body, w.error)) return w;
     size_t cur = body.find("\"current\":");
-    if (cur == std::string::npos) { w.error = L"zła odpowiedź"; return w; }
+    if (cur == std::string::npos) { w.error = L"bad response"; return w; }
     double code = 0;
     JsonNumber(body, "temperature_2m", w.tempC, cur);
     JsonNumber(body, "precipitation", w.precip, cur);
