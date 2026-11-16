@@ -9,6 +9,18 @@ storms that react to your windows, your mouse cursor and the real weather outsid
 
 *Parapet* is Polish for windowsill.
 
+<p align="center">
+  <a href="https://github.com/d0pawlus/Parapet/releases/latest/download/Parapet.exe">
+    <img src="https://img.shields.io/badge/Download-Parapet.exe-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="Download Parapet.exe">
+  </a>
+  <br>
+  <a href="https://github.com/d0pawlus/Parapet/releases/latest">
+    <img src="https://img.shields.io/github/v/release/d0pawlus/Parapet?label=latest%20release" alt="Latest release">
+  </a>
+  <br>
+  <sub>Windows 10/11 · no installer, just run the exe</sub>
+</p>
+
 ## Features
 
 - **Leaves**: 28 species (maples, oaks, beech, birch, linden, ginkgo, chestnut, hawthorn…) in warm, flat
