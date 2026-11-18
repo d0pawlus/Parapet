@@ -1,0 +1,52 @@
+[package]
+name = "parapet"
+version = "0.2.0"
+edition = "2021"
+description = "A cozy, transparent, click-through overlay with autumn leaves, rain, snow and storms that react to your windows"
+license = "GPL-3.0-or-later"
+authors = ["Dominik Pawluś"]
+repository = "https://github.com/d0pawlus/Parapet"
+build = "build.rs"
+
+[[bin]]
+name = "parapet"
+path = "src/main.rs"
+
+[features]
+# diagnostic build: writes a log next to the settings, dumps the leaf atlas and summons every visitor at startup
+debug-overlay = []
+
+[dependencies]
+winit = "0.30"
+wgpu = { version = "30", default-features = false, features = ["std", "dx12", "metal", "wgsl"] }
+tray-icon = "0.21"
+tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd"] }
+png = "0.17"
+bytemuck = { version = "1", features = ["derive"] }
+pollster = "0.4"
+serde_json = "1"
+ureq = { version = "3", default-features = false, features = ["native-tls", "gzip", "json"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.60", features = [
+    "Win32_Foundation", "Win32_Security", "Win32_System_StationsAndDesktops", "Win32_System_SystemInformation", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Accessibility", "Win32_System_Threading", "Win32_System_Power", "Win32_System_Registry",
+    "Win32_System_RemoteDesktop", "Win32_System_LibraryLoader", "Win32_UI_Shell", "Win32_System_SystemServices",
+] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSArray", "NSGeometry", "NSString", "NSThread"] }
+objc2-app-kit = { version = "0.3", features = ["NSScreen", "NSWindow", "NSView", "NSResponder", "NSGraphics", "NSApplication", "NSRunningApplication"] }
+core-foundation = "0.10"
+core-graphics = "0.24"
+libc = "0.2"
+
+[build-dependencies]
+embed-resource = "3"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

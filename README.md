@@ -4,8 +4,8 @@
 
 # Parapet
 
-A cozy, transparent, click-through overlay for the whole Windows desktop: autumn leaves, rain, snow and
-storms that react to your windows, your mouse cursor and the real weather outside.
+A cozy, transparent, click-through overlay for the whole desktop on Windows and macOS: autumn leaves, rain,
+snow and storms that react to your windows, your mouse cursor and the real weather outside.
 
 *Parapet* is Polish for windowsill.
 
@@ -13,12 +13,15 @@ storms that react to your windows, your mouse cursor and the real weather outsid
   <a href="https://github.com/d0pawlus/Parapet/releases/latest/download/Parapet.exe">
     <img src="https://img.shields.io/badge/Download-Parapet.exe-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="Download Parapet.exe">
   </a>
+  <a href="https://github.com/d0pawlus/Parapet/releases/latest/download/Parapet-macOS-arm64.zip">
+    <img src="https://img.shields.io/badge/Download-macOS%20(Apple%20silicon)-2ea44f?style=for-the-badge&logo=apple&logoColor=white" alt="Download Parapet for macOS">
+  </a>
   <br>
   <a href="https://github.com/d0pawlus/Parapet/releases/latest">
     <img src="https://img.shields.io/github/v/release/d0pawlus/Parapet?label=latest%20release" alt="Latest release">
   </a>
   <br>
-  <sub>Windows 10/11 · no installer, just run the exe</sub>
+  <sub>Windows 10/11 x64 · macOS 11+ on Apple silicon · no installer</sub>
 </p>
 
 ## Features
@@ -29,7 +32,7 @@ storms that react to your windows, your mouse cursor and the real weather outsid
 - **Windows are roofs**: leaves and snow settle on the top edges of windows and ride along when a window
   moves. Jerk a window to shake them off. Rain runs to the corners, where a drop gathers and falls like
   from a gutter, and some water trickles down the window's sides.
-- **The taskbar is the ground**: leaves, snowdrifts and, after rain, mud and puddles with ripples and
+- **The taskbar is the ground** (on macOS: the Dock, or the bottom of the screen): leaves, snowdrifts and, after rain, mud and puddles with ripples and
   rings from the drops. It works with maximized windows too.
 - **The mouse is the wind**: moving the cursor sweeps up falling leaves and flakes, lifts leaves off the
   ground, blows snow off the drifts and makes waves and splashes of water or mud in puddles.
@@ -52,35 +55,51 @@ Settings). Changes to the file are picked up automatically.
 Tray menu → Performance: 20/30/60 fps and **low** (½ resolution), **medium** (¾), **high** (full) or
 **ultra** (full + leaf shadows) quality.
 
-- Native C++ and Win32, a ~400 KB exe with no runtime to install.
-- Drawn on the GPU with Direct2D and DirectComposition. Leaves, drops, flakes and the snow, mud and water
-  layers are sprites from a single atlas. Leaves are painted at 4 sizes (mipmaps) so they don't shimmer.
-- Windows are tracked through system events rather than constant polling. The cursor is read once per
-  frame, with no global mouse hook.
+- Written in Rust: one ~6 MB executable with no runtime to install. The same simulation runs everywhere;
+  only window tracking, power and the overlay windows are platform code.
+- Drawn on the GPU with wgpu: DirectX 12 through DirectComposition on Windows, Metal on macOS, one transparent
+  window per monitor. Leaves, drops, flakes and the snow, mud and water layers are sprites from a single
+  atlas, the visitors are antialiased shapes, all in one draw call. Leaves are painted at 4 sizes (mipmaps) so
+  they don't shimmer.
+- The animation runs on its own thread, so opening the tray menu doesn't stop it.
+- On Windows, windows are tracked through system events rather than constant polling; on macOS the window
+  list is read from the window server each frame. The cursor is read once per frame, with no global mouse hook.
 - Pauses during full-screen games and videos, on the lock screen and while the monitor is off. On battery
-  it caps at 20 fps and uses EcoQoS. Opening the tray menu doesn't stop the animation.
+  it caps at 20 fps (and uses EcoQoS on Windows).
 
-Measured on a 4K display plus a second monitor:
+Measured on Windows 11 with a 4K display plus a 1080p monitor (RTX 5070):
 
-| Scenario | CPU (one core) | RAM |
+| Scenario | CPU (one core) | RAM (working set) |
 |---|---|---|
-| Storm with puddles, high, 30 fps | 2.6% | 18 MB |
-| Snow with drifts, high, 30 fps | 3.5% | 21 MB |
-| Storm with puddles, ultra, 60 fps | 5.9% | 27 MB |
-| Leaves, ultra, 60 fps | 5.3% | 15 MB |
+| Storm, extreme intensity, ultra, 30 fps, every visitor out | 6.9% | 112 MB |
+
+Most of the memory is the DirectX 12 driver; the old Direct2D build used about 20 MB.
 
 ## Download
 
-A ready-to-run `Parapet.exe` (Windows 10/11, x64) is on the
-[Releases](https://github.com/d0pawlus/Parapet/releases) page. Just run it; settings are saved to
-`settings.ini` next to the exe. The exe isn't code-signed yet, so Windows SmartScreen may warn you:
-click "More info" → "Run anyway". macOS and Linux versions are planned.
+Ready-to-run builds are on the [Releases](https://github.com/d0pawlus/Parapet/releases) page.
+
+- **Windows 10/11 (x64)**: `Parapet.exe`. Just run it; settings are saved to `settings.ini` next to the exe.
+  The exe isn't code-signed yet, so Windows SmartScreen may warn you: click "More info" → "Run anyway".
+- **macOS 11+ (Apple silicon)**: `Parapet-macOS-arm64.zip`. Unzip it and move `Parapet.app` to Applications.
+  It lives in the menu bar, with no Dock icon. Settings are in
+  `~/Library/Application Support/Parapet/settings.ini`. The app isn't notarized yet, so the first time
+  right-click it → Open (on macOS 15: System Settings → Privacy & Security → "Open Anyway"), or run
+  `xattr -dr com.apple.quarantine /Applications/Parapet.app`.
+
+Linux isn't supported yet: the overlay builds there, but nothing lands on windows.
 
 ## Building
 
-`build.bat` (VS Build Tools 2019 + Windows 10 SDK) produces `bin\Parapet.exe`.
-`build.bat debug` builds a diagnostic version that writes a log, dumps the leaf atlas and summons every
-visitor at startup.
+With [Rust](https://rustup.rs) installed:
+
+- `cargo build --release` produces `target/release/parapet(.exe)` (on Windows with the MSVC toolchain).
+- `sh scripts/bundle-macos.sh` (on a Mac) builds `dist/Parapet.app` and `dist/Parapet-macOS-arm64.zip`.
+- `cargo build --release --features debug-overlay` builds a diagnostic version that writes a log next to
+  `settings.ini`, dumps the leaf atlas and summons every visitor at startup.
+- `cargo test` runs the simulation, drawing and settings tests.
+
+GitHub Actions builds both platforms on every push and attaches them to a release for `v*` tags.
 
 The logo is generated by `assets/make_logo.py` (Python + Pillow).
 
