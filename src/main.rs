@@ -102,6 +102,8 @@ struct App {
     menu: Option<TrayMenu>,
     started: bool,
     next_housekeeping: Instant,
+    /// Why the platform cannot show a transparent overlay right now; shown at the top of the tray menu.
+    overlay_problem: Option<String>,
 }
 
 fn load_icon(png_bytes: &[u8]) -> Option<tray_icon::Icon> {
@@ -172,6 +174,17 @@ impl App {
         if monitors.is_empty() {
             return;
         }
+        let problem = platform::overlay_supported().err();
+        if problem != self.overlay_problem {
+            if let Some(why) = &problem {
+                eprintln!("parapet: no overlay: {why}");
+            }
+            self.overlay_problem = problem;
+            self.update_weather_text();
+        }
+        if self.overlay_problem.is_some() {
+            return;
+        }
         let layout = Self::layout_for(&monitors);
         let old: Vec<_> = self.overlays.drain(..).map(|o| o.window).collect();
         self.retiring.extend(old);
@@ -203,6 +216,12 @@ impl App {
             {
                 use winit::platform::macos::WindowAttributesExtMacOS;
                 attrs = attrs.with_has_shadow(false);
+            }
+            #[cfg(target_os = "linux")]
+            {
+                // unmanaged by the window manager: no frame, no taskbar entry, never focused, on every workspace
+                use winit::platform::x11::WindowAttributesExtX11;
+                attrs = attrs.with_override_redirect(true);
             }
             let window = match event_loop.create_window(attrs) {
                 Ok(w) => Arc::new(w),
@@ -237,7 +256,7 @@ impl App {
     fn build_tray(&mut self) {
         let s = &self.settings;
         let check = |id: String, label: &str, on: bool| CheckMenuItem::with_id(id, label, true, on, None);
-        let weather = MenuItem::with_id("weather", self.weather_now.describe(), false, None);
+        let weather = MenuItem::with_id("weather", self.status_text(), false, None);
         let modes: Vec<_> = MODES.iter().map(|(k, l)| check(format!("mode:{k}"), l, s.mode == *k)).collect();
         let intensities: Vec<_> = INTENSITIES
             .iter()
@@ -304,7 +323,7 @@ impl App {
         let mut builder = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
             .with_menu_on_left_click(true)
-            .with_tooltip(format!("{APP_NAME}\n{}", self.weather_now.describe()));
+            .with_tooltip(format!("{APP_NAME}\n{}", self.status_text()));
         if let Some(icon) = icon {
             builder = builder.with_icon(icon);
         }
@@ -349,8 +368,16 @@ impl App {
         m.autostart.set_checked(platform::autostart_enabled());
     }
 
+    /// The first, disabled line of the tray menu: the weather, or why nothing is shown.
+    fn status_text(&self) -> String {
+        match &self.overlay_problem {
+            Some(why) => format!("Overlay off: {why}"),
+            None => self.weather_now.describe(),
+        }
+    }
+
     fn update_weather_text(&self) {
-        let text = self.weather_now.describe();
+        let text = self.status_text();
         if let Some(m) = &self.menu {
             m.weather.set_text(&text);
         }
@@ -406,6 +433,14 @@ impl App {
         self.send(Command::Settings(self.settings.clone()));
     }
 
+    /// Housekeeping every 2 s, and more often where the tray toolkit needs pumping.
+    fn next_wake(&self) -> Instant {
+        match platform::UI_PUMP_INTERVAL {
+            Some(s) => self.next_housekeeping.min(Instant::now() + Duration::from_secs_f64(s)),
+            None => self.next_housekeeping,
+        }
+    }
+
     fn housekeeping(&mut self, event_loop: &ActiveEventLoop) {
         // settings.ini edited by hand: pick the changes up
         let t = settings::modified();
@@ -419,7 +454,7 @@ impl App {
             self.sync_menu();
             self.send(Command::Settings(self.settings.clone()));
         }
-        if Self::current_monitors(event_loop) != self.monitors {
+        if Self::current_monitors(event_loop) != self.monitors || self.overlay_problem.is_some() {
             self.build_overlays(event_loop);
         }
         for o in &self.overlays {
@@ -429,15 +464,16 @@ impl App {
 }
 
 impl ApplicationHandler<UserEvent> for App {
-    fn new_events(&mut self, event_loop: &ActiveEventLoop, cause: StartCause) {
+    fn new_events(&mut self, event_loop: &ActiveEventLoop, _cause: StartCause) {
         if !self.started {
             return;
         }
-        if matches!(cause, StartCause::ResumeTimeReached { .. }) || Instant::now() >= self.next_housekeeping {
+        if Instant::now() >= self.next_housekeeping {
             self.next_housekeeping = Instant::now() + Duration::from_secs(2);
             self.housekeeping(event_loop);
         }
-        event_loop.set_control_flow(ControlFlow::WaitUntil(self.next_housekeeping));
+        platform::pump_ui();
+        event_loop.set_control_flow(ControlFlow::WaitUntil(self.next_wake()));
     }
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
@@ -449,7 +485,7 @@ impl ApplicationHandler<UserEvent> for App {
         self.build_tray();
         platform::install_hooks();
         self.next_housekeeping = Instant::now() + Duration::from_secs(2);
-        event_loop.set_control_flow(ControlFlow::WaitUntil(self.next_housekeeping));
+        event_loop.set_control_flow(ControlFlow::WaitUntil(self.next_wake()));
     }
 
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: UserEvent) {
@@ -509,6 +545,12 @@ fn main() {
         // a menu bar extra: no Dock icon, no app menu
         builder.with_activation_policy(ActivationPolicy::Accessory).with_default_menu(false);
     }
+    #[cfg(target_os = "linux")]
+    {
+        // X11 (XWayland under Wayland): Wayland lets no app place itself above the others
+        use winit::platform::x11::EventLoopBuilderExtX11;
+        builder.with_x11();
+    }
     let event_loop = match builder.build() {
         Ok(el) => el,
         Err(e) => {
@@ -528,6 +570,7 @@ fn main() {
         let _ = weather_proxy.send_event(UserEvent::Weather);
     });
 
+    platform::init_ui();
     let instance = gpu::new_instance();
     let (tx, rx) = std::sync::mpsc::channel();
     let render_instance = instance.clone();
@@ -554,6 +597,7 @@ fn main() {
         menu: None,
         started: false,
         next_housekeeping: Instant::now(),
+        overlay_problem: None,
     };
     let _ = event_loop.run_app(&mut app);
     drop(app.proxy);

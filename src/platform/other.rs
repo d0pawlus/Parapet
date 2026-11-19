@@ -1,4 +1,4 @@
-//! Fallbacks for systems without a native layer yet (Linux, BSD): the overlay runs, but it knows only the
+//! Fallbacks for systems without a native layer yet (BSD): the overlay runs, but it knows only the
 //! monitors and the pointer winit can tell it about, so nothing lands on windows.
 
 use super::{MonitorInfo, RawWindow};
@@ -60,3 +60,13 @@ pub fn open_in_editor(path: &std::path::Path) {
 pub fn prepare_overlay(_window: &winit::window::Window) {}
 pub fn raise_overlay(_window: &winit::window::Window) {}
 pub const UNITS_ARE_PIXELS: bool = true;
+
+/// Nothing stops the overlay from being transparent here.
+pub fn overlay_supported() -> Result<(), String> {
+    Ok(())
+}
+
+/// The tray menu needs no toolkit of its own here.
+pub fn init_ui() {}
+pub fn pump_ui() {}
+pub const UI_PUMP_INTERVAL: Option<f64> = None;

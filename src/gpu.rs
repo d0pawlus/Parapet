@@ -52,9 +52,18 @@ pub struct Gpu {
     quality_scale: f32,
 }
 
+/// The surface alpha modes that keep the overlay see-through, best first. Not `Inherit`: on X11 a window
+/// without an alpha channel reports it too, and there it means opaque.
+const TRANSPARENT_ALPHA_MODES: [wgpu::CompositeAlphaMode; 2] =
+    [wgpu::CompositeAlphaMode::PreMultiplied, wgpu::CompositeAlphaMode::PostMultiplied];
+
+fn pick_alpha_mode(supported: &[wgpu::CompositeAlphaMode]) -> Option<wgpu::CompositeAlphaMode> {
+    TRANSPARENT_ALPHA_MODES.into_iter().find(|m| supported.contains(m))
+}
+
 pub fn new_instance() -> wgpu::Instance {
     let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
-    desc.backends = wgpu::Backends::DX12 | wgpu::Backends::METAL;
+    desc.backends = wgpu::Backends::DX12 | wgpu::Backends::METAL | wgpu::Backends::VULKAN;
     // a swapchain made for DirectComposition is the one that can be transparent on Windows
     desc.backend_options.dx12.presentation_system = wgpu::Dx12SwapchainKind::DxgiFromVisual;
     wgpu::Instance::new(desc)
@@ -314,10 +323,9 @@ impl Gpu {
         let (device, _) = self.device.as_ref().unwrap();
         let adapter = self.adapter.as_ref().unwrap();
         let caps = d.surface.get_capabilities(adapter);
-        let alpha_mode = [wgpu::CompositeAlphaMode::PreMultiplied, wgpu::CompositeAlphaMode::PostMultiplied]
-            .into_iter()
-            .find(|m| caps.alpha_modes.contains(m))
-            .unwrap_or(caps.alpha_modes[0]);
+        // an opaque surface would cover the whole monitor in black: refuse it rather than draw it
+        let alpha_mode = pick_alpha_mode(&caps.alpha_modes)
+            .ok_or_else(|| format!("the GPU can only draw opaque windows here ({:?})", caps.alpha_modes))?;
         let present_mode = [wgpu::PresentMode::Mailbox, wgpu::PresentMode::Immediate]
             .into_iter()
             .find(|m| caps.present_modes.contains(m))
@@ -496,5 +504,26 @@ impl Gpu {
         } else {
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wgpu::CompositeAlphaMode as A;
+
+    #[test]
+    fn prefers_premultiplied_alpha() {
+        assert_eq!(pick_alpha_mode(&[A::Opaque, A::Inherit, A::PreMultiplied]), Some(A::PreMultiplied));
+    }
+
+    #[test]
+    fn refuses_inherit_which_an_opaque_x11_window_reports() {
+        assert_eq!(pick_alpha_mode(&[A::Opaque, A::Inherit]), None);
+    }
+
+    #[test]
+    fn refuses_a_surface_that_can_only_be_opaque() {
+        assert_eq!(pick_alpha_mode(&[A::Opaque]), None);
     }
 }

@@ -19,7 +19,8 @@ debug-overlay = []
 [dependencies]
 winit = "0.30"
 wgpu = { version = "30", default-features = false, features = ["std", "dx12", "metal", "wgsl"] }
-tray-icon = "0.21"
+# no libxdo: it is only for menu accelerators on Linux, and most distributions do not ship it
+tray-icon = { version = "0.21", default-features = false }
 tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd"] }
 png = "0.17"
 bytemuck = { version = "1", features = ["derive"] }
@@ -40,6 +41,12 @@ objc2-foundation = { version = "0.3", features = ["NSArray", "NSGeometry", "NSSt
 objc2-app-kit = { version = "0.3", features = ["NSScreen", "NSWindow", "NSView", "NSResponder", "NSGraphics", "NSApplication", "NSRunningApplication"] }
 core-foundation = "0.10"
 core-graphics = "0.24"
+libc = "0.2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+wgpu = { version = "30", default-features = false, features = ["vulkan"] }
+x11rb = { version = "0.13", features = ["randr", "dpms"] }
+gtk = "0.18"
 libc = "0.2"
 
 [build-dependencies]

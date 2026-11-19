@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Parapet
+Comment=Falling leaves, rain and snow over your desktop
+Exec=parapet
+Icon=parapet
+Terminal=false
+Categories=Utility;

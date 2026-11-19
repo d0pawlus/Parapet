@@ -44,9 +44,29 @@ jobs:
           name: Parapet-macOS-arm64
           path: dist/Parapet-macOS-arm64.zip
 
+  linux:
+    runs-on: ubuntu-latest
+    # built on Ubuntu 22.04 so the AppImage runs on distributions with glibc 2.35 or newer
+    container: ubuntu:22.04
+    steps:
+      - name: System packages
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends curl ca-certificates git build-essential pkg-config file \
+            libgtk-3-dev libayatana-appindicator3-dev libssl-dev
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --release
+      - run: sh scripts/bundle-linux.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Parapet-linux-x86_64
+          path: dist/Parapet-x86_64.AppImage
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [windows, macos]
+    needs: [windows, macos, linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -58,3 +78,4 @@ jobs:
           files: |
             artifacts/Parapet.exe
             artifacts/Parapet-macOS-arm64.zip
+            artifacts/Parapet-x86_64.AppImage

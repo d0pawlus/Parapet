@@ -1,6 +1,6 @@
 //! Everything that differs between operating systems: monitors, the windows on screen, the pointer, power and
 //! session state, autostart, and dressing up the overlay windows. Coordinates are global desktop units with y
-//! pointing down: physical pixels on Windows, points on macOS.
+//! pointing down: physical pixels on Windows and Linux, points on macOS.
 
 #[cfg(windows)]
 mod windows;
@@ -12,9 +12,14 @@ mod macos;
 #[cfg(target_os = "macos")]
 pub use self::macos::*;
 
-#[cfg(not(any(windows, target_os = "macos")))]
+#[cfg(target_os = "linux")]
+mod linux;
+#[cfg(target_os = "linux")]
+pub use self::linux::*;
+
+#[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
 mod other;
-#[cfg(not(any(windows, target_os = "macos")))]
+#[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
 pub use self::other::*;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -53,4 +58,10 @@ pub struct RawWindow {
 }
 
 /// What the tray menu calls starting with the system.
-pub const AUTOSTART_LABEL: &str = if cfg!(target_os = "macos") { "Open at login" } else { "Start with Windows" };
+pub const AUTOSTART_LABEL: &str = if cfg!(target_os = "macos") {
+    "Open at login"
+} else if cfg!(windows) {
+    "Start with Windows"
+} else {
+    "Start on login"
+};

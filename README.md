@@ -4,7 +4,7 @@
 
 # Parapet
 
-A cozy, transparent, click-through overlay for the whole desktop on Windows and macOS: autumn leaves, rain,
+A cozy, transparent, click-through overlay for the whole desktop on Windows, macOS and Linux: autumn leaves, rain,
 snow and storms that react to your windows, your mouse cursor and the real weather outside.
 
 *Parapet* is Polish for windowsill.
@@ -16,12 +16,15 @@ snow and storms that react to your windows, your mouse cursor and the real weath
   <a href="https://github.com/d0pawlus/Parapet/releases/latest/download/Parapet-macOS-arm64.zip">
     <img src="https://img.shields.io/badge/Download-macOS%20(Apple%20silicon)-2ea44f?style=for-the-badge&logo=apple&logoColor=white" alt="Download Parapet for macOS">
   </a>
+  <a href="https://github.com/d0pawlus/Parapet/releases/latest/download/Parapet-x86_64.AppImage">
+    <img src="https://img.shields.io/badge/Download-Linux%20AppImage-2ea44f?style=for-the-badge&logo=linux&logoColor=white" alt="Download Parapet for Linux">
+  </a>
   <br>
   <a href="https://github.com/d0pawlus/Parapet/releases/latest">
     <img src="https://img.shields.io/github/v/release/d0pawlus/Parapet?label=latest%20release" alt="Latest release">
   </a>
   <br>
-  <sub>Windows 10/11 x64 · macOS 11+ on Apple silicon · no installer</sub>
+  <sub>Windows 10/11 x64 · macOS 11+ on Apple silicon · Linux x86_64 (X11) · no installer</sub>
 </p>
 
 ## Features
@@ -87,7 +90,11 @@ Ready-to-run builds are on the [Releases](https://github.com/d0pawlus/Parapet/re
   right-click it → Open (on macOS 15: System Settings → Privacy & Security → "Open Anyway"), or run
   `xattr -dr com.apple.quarantine /Applications/Parapet.app`.
 
-Linux isn't supported yet: the overlay builds there, but nothing lands on windows.
+- **Linux (x86_64)**: `Parapet-x86_64.AppImage`. Make it executable (`chmod +x`) and run it; settings are in
+  `~/.config/parapet/settings.ini`. It needs what desktop distributions usually have: a compositing window
+  manager, GTK 3 with an AppIndicator library, `libxkbcommon-x11`, a Vulkan driver and OpenSSL 3. On X11
+  everything works as on Windows. Under Wayland it runs through XWayland and only falls: Wayland doesn't let
+  apps see other windows or the pointer. GNOME shows the tray icon only with the AppIndicator extension.
 
 ## Building
 
@@ -95,6 +102,8 @@ With [Rust](https://rustup.rs) installed:
 
 - `cargo build --release` produces `target/release/parapet(.exe)` (on Windows with the MSVC toolchain).
 - `sh scripts/bundle-macos.sh` (on a Mac) builds `dist/Parapet.app` and `dist/Parapet-macOS-arm64.zip`.
+- `sh scripts/bundle-linux.sh` (on Linux, with `libgtk-3-dev`, `libayatana-appindicator3-dev` and `libssl-dev`)
+  builds `dist/Parapet-x86_64.AppImage`.
 - `cargo build --release --features debug-overlay` builds a diagnostic version that writes a log next to
   `settings.ini`, dumps the leaf atlas and summons every visitor at startup.
 - `cargo test` runs the simulation, drawing and settings tests.
