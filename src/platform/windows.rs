@@ -30,7 +30,12 @@ pub fn init() -> bool {
     unsafe {
         let name = wide("Local\\Parapet.SingleInstance");
         let m = CreateMutexW(std::ptr::null(), 1, name.as_ptr());
-        if m.is_null() || GetLastError() == ERROR_ALREADY_EXISTS {
+        if m.is_null() {
+            return false;
+        }
+        if GetLastError() == ERROR_ALREADY_EXISTS {
+            // our handle would keep the mutex alive after the other instance quits (and init is retried after updates)
+            CloseHandle(m);
             return false;
         }
         // deliberately leaked: held for the life of the process
