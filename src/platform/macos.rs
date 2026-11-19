@@ -249,3 +249,13 @@ pub fn raise_overlay(_window: &winit::window::Window) {}
 
 /// macOS sizes windows in points; surfaces are larger on Retina screens.
 pub const UNITS_ARE_PIXELS: bool = false;
+
+/// Nothing stops the overlay from being transparent here.
+pub fn overlay_supported() -> Result<(), String> {
+    Ok(())
+}
+
+/// The tray menu needs no toolkit of its own here.
+pub fn init_ui() {}
+pub fn pump_ui() {}
+pub const UI_PUMP_INTERVAL: Option<f64> = None;

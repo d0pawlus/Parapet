@@ -339,3 +339,13 @@ pub fn raise_overlay(window: &winit::window::Window) {
 
 /// Windows sizes windows in physical pixels, which is what the overlay works in.
 pub const UNITS_ARE_PIXELS: bool = true;
+
+/// Nothing stops the overlay from being transparent here.
+pub fn overlay_supported() -> Result<(), String> {
+    Ok(())
+}
+
+/// The tray menu needs no toolkit of its own here.
+pub fn init_ui() {}
+pub fn pump_ui() {}
+pub const UI_PUMP_INTERVAL: Option<f64> = None;
