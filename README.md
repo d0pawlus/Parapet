@@ -7,7 +7,7 @@
 A cozy, transparent, click-through overlay for the whole desktop on Windows and macOS: autumn leaves, rain,
 snow and storms that react to your windows, your mouse cursor and the real weather outside.
 
-*Parapet* is Polish for windowsill.
+*Parapet* is Polish for windowsill. Website: [pawlus.dev/parapet](https://www.pawlus.dev/parapet/)
 
 <p align="center">
   <a href="https://github.com/d0pawlus/Parapet/releases/latest/download/Parapet.exe">
