@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parapet: falling leaves, rain and snow on your desktop</title>
+<meta name="description" content="Parapet is a free, cozy desktop overlay for Windows and macOS: autumn leaves, rain, snow and storms that land on your windows, react to your mouse and follow the real weather outside.">
+<link rel="canonical" href="https://www.pawlus.dev/parapet/">
+<link rel="icon" type="image/png" href="favicon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Parapet: weather on your desktop">
+<meta property="og:description" content="Free, cozy overlay for Windows and macOS: leaves, rain, snow and storms that land on your windows and follow the real weather.">
+<meta property="og:url" content="https://www.pawlus.dev/parapet/">
+<meta property="og:image" content="https://www.pawlus.dev/parapet/og.png">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Parapet",
+  "operatingSystem": "Windows 10, Windows 11, macOS 11+",
+  "applicationCategory": "DesktopEnhancementApplication",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "downloadUrl": "https://github.com/d0pawlus/Parapet/releases/latest",
+  "image": "https://www.pawlus.dev/parapet/og.png",
+  "license": "https://www.gnu.org/licenses/gpl-3.0.html"
+}
+</script>
+<style>
+  :root {
+    --bg: #fbf6ee;
+    --bg-soft: #f3eadb;
+    --ink: #2e2219;
+    --ink-soft: #6b5a4b;
+    --accent: #c4541c;
+    --accent-ink: #ffffff;
+    --accent-hover: #a8440f;
+    --card: #ffffff;
+    --line: #e6d8c3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1612;
+      --bg-soft: #251d17;
+      --ink: #f3e9dc;
+      --ink-soft: #bba792;
+      --accent: #e0733a;
+      --accent-ink: #1c1612;
+      --accent-hover: #f08a52;
+      --card: #2a211a;
+      --line: #3a2e25;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    overflow-x: hidden;
+  }
+  #leaves { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+  main, footer { position: relative; z-index: 1; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px; }
+  a { color: var(--accent); }
+
+  .hero { text-align: center; padding: 72px 0 56px; }
+  .hero img { width: 128px; height: 128px; image-rendering: pixelated; }
+  h1 { font-size: clamp(2.4rem, 7vw, 3.6rem); line-height: 1.1; margin: 16px 0 8px; letter-spacing: -0.02em; }
+  .tagline { font-size: 1.25rem; color: var(--ink-soft); margin: 0 auto 32px; max-width: 34ch; }
+
+  .downloads { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; flex-direction: column; align-items: center;
+    padding: 14px 28px; border-radius: 14px; text-decoration: none;
+    border: 2px solid var(--accent); color: var(--accent); background: var(--card);
+    font-weight: 650; font-size: 1.1rem; min-width: 240px;
+    transition: transform .15s ease, background .15s ease;
+  }
+  .btn small { font-weight: 400; font-size: .85rem; opacity: .85; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); }
+  .btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .meta { margin-top: 16px; font-size: .9rem; color: var(--ink-soft); }
+
+  section { padding: 40px 0; }
+  h2 { font-size: 1.7rem; margin: 0 0 20px; }
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .feature { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+  .feature h3 { margin: 0 0 6px; font-size: 1.1rem; }
+  .feature p { margin: 0; color: var(--ink-soft); font-size: .97rem; }
+  .emoji { font-size: 1.6rem; display: block; margin-bottom: 6px; }
+
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .step { background: var(--bg-soft); border-radius: 14px; padding: 20px 22px; }
+  .step h3 { margin: 0 0 8px; }
+  .step ol { margin: 0; padding-left: 22px; }
+  .step li { margin: 6px 0; }
+  .note { font-size: .92rem; color: var(--ink-soft); margin-top: 10px; }
+  kbd {
+    font: inherit; font-size: .9em; background: var(--card); border: 1px solid var(--line);
+    border-radius: 6px; padding: 1px 6px; white-space: nowrap;
+  }
+
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin-bottom: 10px; }
+  summary { cursor: pointer; font-weight: 600; }
+  details p { margin: 10px 0 0; color: var(--ink-soft); }
+
+  footer { padding: 40px 0 60px; text-align: center; color: var(--ink-soft); font-size: .9rem; }
+
+  @media (max-width: 520px) {
+    .hero { padding-top: 48px; }
+    .btn { min-width: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+<canvas id="leaves" aria-hidden="true"></canvas>
+
+<main>
+  <header class="hero wrap">
+    <img src="logo.png" alt="Parapet logo: a pixel-art window with a sill" width="128" height="128">
+    <h1>Parapet</h1>
+    <p class="tagline">Falling leaves, rain and snow on your desktop. They land on your windows and follow the real weather outside.</p>
+
+    <div class="downloads" id="downloads">
+      <a class="btn primary" id="btn-win" href="https://github.com/d0pawlus/Parapet/releases/latest/download/Parapet.exe">
+        Download for Windows <small>Windows 10 / 11 · 64-bit</small>
+      </a>
+      <a class="btn" id="btn-mac" href="https://github.com/d0pawlus/Parapet/releases/latest/download/Parapet-macOS-arm64.zip">
+        Download for Mac <small>macOS 11+ · Apple silicon (M1 and newer)</small>
+      </a>
+    </div>
+    <p class="meta"><span id="version">Latest version</span> · Free · No installer · About 6 MB</p>
+  </header>
+
+  <section class="wrap" aria-labelledby="what">
+    <h2 id="what">What it does</h2>
+    <div class="features">
+      <div class="feature"><span class="emoji">🍁</span><h3>28 kinds of leaves</h3><p>Maples, oaks, ginkgo, chestnut… each one tumbles, swings or spirals down in its own way.</p></div>
+      <div class="feature"><span class="emoji">🪟</span><h3>Windows are roofs</h3><p>Leaves and snow settle on top of your windows and ride along when you move them. Shake a window to knock them off.</p></div>
+      <div class="feature"><span class="emoji">🖱️</span><h3>Your mouse is the wind</h3><p>Sweep leaves around, blow snow off the drifts and splash through puddles.</p></div>
+      <div class="feature"><span class="emoji">🌦️</span><h3>Real weather</h3><p>Rain, snow or storms when it's happening outside your window. No account or setup needed.</p></div>
+      <div class="feature"><span class="emoji">🦔</span><h3>Rare visitors</h3><p>A hedgehog, a fox in the snow, a frog between puddles, a robin on your windows and more.</p></div>
+      <div class="feature"><span class="emoji">🪶</span><h3>Light and quiet</h3><p>Clicks pass right through it. Pauses during games and videos and saves battery on laptops.</p></div>
+    </div>
+  </section>
+
+  <section class="wrap" aria-labelledby="install">
+    <h2 id="install">Getting started</h2>
+    <div class="steps">
+      <div class="step">
+        <h3>Windows</h3>
+        <ol>
+          <li>Open the downloaded <b>Parapet.exe</b>.</li>
+          <li>If a blue “Windows protected your PC” box appears, click <kbd>More info</kbd>, then <kbd>Run anyway</kbd>.</li>
+          <li>Leaves start falling. Settings are in the tray icon near the clock.</li>
+        </ol>
+        <p class="note">Windows shows that warning for new apps without a paid signing certificate. Parapet is open source, so anyone can check what it does.</p>
+      </div>
+      <div class="step">
+        <h3>Mac</h3>
+        <ol>
+          <li>Open the downloaded zip and drag <b>Parapet</b> into <b>Applications</b>.</li>
+          <li>The first time, right-click Parapet and choose <kbd>Open</kbd>.</li>
+          <li>On macOS 15 or newer: open <b>System Settings → Privacy &amp; Security</b>, scroll down and click <kbd>Open Anyway</kbd>.</li>
+          <li>Parapet lives in the menu bar at the top of the screen.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap" aria-labelledby="faq">
+    <h2 id="faq">Questions</h2>
+    <details><summary>Is it free?</summary><p>Yes, completely. No ads, no account, no tracking.</p></details>
+    <details><summary>Is it safe?</summary><p>Parapet is open source under the GPL v3 license: its full code is public and the downloads are built automatically from it. The only thing it fetches from the internet is the weather forecast.</p></details>
+    <details><summary>Will it slow my computer down?</summary><p>No. It uses a few percent of one CPU core and pauses on its own during full-screen games and videos, on the lock screen and when the screen is off.</p></details>
+    <details><summary>How do I close or remove it?</summary><p>Right-click the tray icon (Windows) or click the menu bar icon (Mac) and choose Exit. To remove it, just delete the file. Nothing else is installed.</p></details>
+    <details><summary>Does it work on Linux or Intel Macs?</summary><p>Not yet. Parapet currently runs on Windows 10/11 and on Macs with Apple silicon.</p></details>
+  </section>
+</main>
+
+<footer class="wrap">
+  <p><i>Parapet</i> is Polish for windowsill.</p>
+  <p>Made by Dominik Pawluś · <a href="https://github.com/d0pawlus/Parapet">Source code</a> · <a href="https://github.com/d0pawlus/Parapet/releases">All versions</a></p>
+</footer>
+
+<script>
+  (function highlightUsersPlatform() {
+    const ua = navigator.userAgent;
+    const isMac = /Macintosh|Mac OS X/.test(ua) && !/iPhone|iPad/.test(ua);
+    if (!isMac) return;
+    const win = document.getElementById('btn-win');
+    const mac = document.getElementById('btn-mac');
+    win.classList.remove('primary');
+    mac.classList.add('primary');
+    mac.parentNode.insertBefore(mac, win);
+  })();
+
+  (async function showLatestVersion() {
+    try {
+      const res = await fetch('https://api.github.com/repos/d0pawlus/Parapet/releases/latest');
+      if (!res.ok) return;
+      const { tag_name: tag } = await res.json();
+      if (typeof tag === 'string' && /^v?[\w.\-]{1,20}$/.test(tag)) {
+        document.getElementById('version').textContent = 'Version ' + tag.replace(/^v/, '');
+      }
+    } catch (err) {
+      // Offline or rate-limited: keep the generic "Latest version" label.
+    }
+  })();
+
+  (function fallingLeaves() {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const canvas = document.getElementById('leaves');
+    const ctx = canvas.getContext('2d');
+    const COLORS = ['#d9622b', '#e8a33d', '#b8441f', '#c9862f', '#8f3b1b', '#e2bb4a'];
+    const LEAF_COUNT = innerWidth < 600 ? 12 : 22;
+    const WIND_RADIUS = 120;
+    let width = 0, height = 0, dpr = 1;
+    const mouse = { x: -1e4, y: -1e4, vx: 0, vy: 0 };
+
+    function resize() {
+      dpr = Math.min(devicePixelRatio || 1, 2);
+      width = innerWidth; height = innerHeight;
+      canvas.width = width * dpr; canvas.height = height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function newLeaf(startAbove) {
+      return {
+        x: Math.random() * width,
+        y: startAbove ? -20 - Math.random() * height * 0.5 : Math.random() * height,
+        size: 8 + Math.random() * 10,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        angle: Math.random() * Math.PI * 2,
+        spin: (Math.random() - 0.5) * 0.04,
+        swing: Math.random() * Math.PI * 2,
+        swingSpeed: 0.01 + Math.random() * 0.02,
+        fall: 0.4 + Math.random() * 0.6,
+        vx: 0, vy: 0,
+      };
+    }
+
+    function drawLeaf(l) {
+      ctx.save();
+      ctx.translate(l.x, l.y);
+      ctx.rotate(l.angle);
+      ctx.scale(1, 0.55 + 0.45 * Math.abs(Math.sin(l.swing)));
+      ctx.fillStyle = l.color;
+      ctx.beginPath();
+      ctx.moveTo(0, -l.size);
+      ctx.quadraticCurveTo(l.size * 0.9, 0, 0, l.size);
+      ctx.quadraticCurveTo(-l.size * 0.9, 0, 0, -l.size);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, -l.size); ctx.lineTo(0, l.size * 1.2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function blowByMouse(l) {
+      const dx = l.x - mouse.x, dy = l.y - mouse.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > WIND_RADIUS) return;
+      const strength = (1 - dist / WIND_RADIUS) * 0.08;
+      l.vx += mouse.vx * strength;
+      l.vy += mouse.vy * strength;
+    }
+
+    function step(l) {
+      blowByMouse(l);
+      l.vx *= 0.95; l.vy *= 0.95;
+      l.swing += l.swingSpeed;
+      l.x += Math.sin(l.swing) * 0.8 + l.vx;
+      l.y += l.fall + l.vy;
+      l.angle += l.spin + l.vx * 0.01;
+      const isGone = l.y > height + 30 || l.x < -60 || l.x > width + 60;
+      return isGone ? newLeaf(true) : l;
+    }
+
+    let leaves = [];
+    function frame() {
+      ctx.clearRect(0, 0, width, height);
+      leaves = leaves.map(step);
+      leaves.forEach(drawLeaf);
+      mouse.vx *= 0.8; mouse.vy *= 0.8;
+      requestAnimationFrame(frame);
+    }
+
+    addEventListener('resize', resize);
+    addEventListener('pointermove', (e) => {
+      mouse.vx = e.clientX - mouse.x; mouse.vy = e.clientY - mouse.y;
+      if (Math.abs(mouse.vx) > 200) { mouse.vx = 0; mouse.vy = 0; }
+      mouse.x = e.clientX; mouse.y = e.clientY;
+    });
+    resize();
+    leaves = Array.from({ length: LEAF_COUNT }, () => newLeaf(false));
+    frame();
+  })();
+</script>
+</body>
+</html>
