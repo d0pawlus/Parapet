@@ -17,6 +17,7 @@ pub struct Settings {
     pub pause_on_fullscreen: bool,
     pub battery_saver: bool,
     pub rare_events: bool, // hedgehogs, foxes, snowdrops and friends now and then
+    pub auto_update: bool, // look for new versions on GitHub now and then
 }
 
 impl Default for Settings {
@@ -33,6 +34,7 @@ impl Default for Settings {
             pause_on_fullscreen: true,
             battery_saver: true,
             rare_events: true,
+            auto_update: true,
         }
     }
 }
@@ -93,6 +95,7 @@ impl Settings {
         s.pause_on_fullscreen = flag("pauseonfullscreen", true);
         s.battery_saver = flag("batterysaver", true);
         s.rare_events = flag("rareevents", true);
+        s.auto_update = flag("autoupdate", true);
         s
     }
 
@@ -100,7 +103,7 @@ impl Settings {
         let b = |v: bool| if v { "1" } else { "0" };
         let text = format!(
             "[Overlay]\r\nMode={}\r\nIntensity={:.2}\r\nCity={}\r\nLatitude={}\r\nLongitude={}\r\nFps={}\r\nQuality={}\r\n\
-             IgnoreMaximized={}\r\nPauseOnFullscreen={}\r\nBatterySaver={}\r\nRareEvents={}\r\n",
+             IgnoreMaximized={}\r\nPauseOnFullscreen={}\r\nBatterySaver={}\r\nRareEvents={}\r\nAutoUpdate={}\r\n",
             self.mode,
             self.intensity,
             self.city,
@@ -112,6 +115,7 @@ impl Settings {
             b(self.pause_on_fullscreen),
             b(self.battery_saver),
             b(self.rare_events),
+            b(self.auto_update),
         );
         let p = path();
         if let Some(dir) = p.parent() {

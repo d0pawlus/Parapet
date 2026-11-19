@@ -26,8 +26,10 @@ pub fn init() -> bool {
     };
     use std::os::fd::AsRawFd;
     let ok = unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0;
-    // held for the life of the process
-    std::mem::forget(file);
+    if ok {
+        // held for the life of the process
+        std::mem::forget(file);
+    }
     ok
 }
 

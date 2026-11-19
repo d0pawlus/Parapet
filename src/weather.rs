@@ -214,12 +214,7 @@ struct Location {
 }
 
 fn run(shared: Arc<(Mutex<Inner>, Condvar)>, notify: impl Fn()) {
-    let agent: ureq::Agent = ureq::Agent::config_builder()
-        .timeout_global(Some(Duration::from_secs(15)))
-        .user_agent("Parapet/0.2")
-        .tls_config(ureq::tls::TlsConfig::builder().provider(ureq::tls::TlsProvider::NativeTls).build())
-        .build()
-        .into();
+    let agent = crate::net::agent(Duration::from_secs(15));
     let mut loc: Option<Location> = None;
     loop {
         let (settings, relocate) = {
@@ -271,11 +266,7 @@ fn run(shared: Arc<(Mutex<Inner>, Condvar)>, notify: impl Fn()) {
 }
 
 fn get_json(agent: &ureq::Agent, url: &str) -> Result<serde_json::Value, String> {
-    let host = url.split('/').nth(2).unwrap_or(url).to_string();
-    let mut resp = agent.get(url).call().map_err(|e| match e {
-        ureq::Error::StatusCode(code) => format!("HTTP {code}"),
-        _ => format!("cannot connect to {host}"),
-    })?;
+    let mut resp = agent.get(url).call().map_err(|e| crate::net::describe_error(url, e))?;
     resp.body_mut().read_json::<serde_json::Value>().map_err(|_| "bad response".to_string())
 }
 
