@@ -11,11 +11,13 @@ mod critters;
 mod draw;
 mod gpu;
 mod leaves;
+mod net;
 mod platform;
 mod render_thread;
 mod settings;
 mod sim;
 mod tracker;
+mod updater;
 mod weather;
 
 use platform::{MonitorInfo, Rect};
@@ -67,6 +69,7 @@ enum UserEvent {
     Menu(MenuEvent),
     Weather,
     Feedback(Feedback),
+    Update(updater::Status),
 }
 
 struct TrayMenu {
@@ -80,6 +83,8 @@ struct TrayMenu {
     rare: CheckMenuItem,
     ignore_max: CheckMenuItem,
     autostart: CheckMenuItem,
+    update: MenuItem,
+    auto_update: CheckMenuItem,
 }
 
 struct Overlay {
@@ -104,6 +109,8 @@ struct App {
     next_housekeeping: Instant,
     /// Why the platform cannot show a transparent overlay right now; shown at the top of the tray menu.
     overlay_problem: Option<String>,
+    update: updater::Status,
+    next_update_check: Instant,
 }
 
 fn load_icon(png_bytes: &[u8]) -> Option<tray_icon::Icon> {
@@ -274,6 +281,8 @@ impl App {
         let rare = check("rare".into(), "Appear on their own (rarely, depending on the weather)", s.rare_events);
         let ignore_max = check("ignoremax".into(), "Fall through maximized windows", s.ignore_maximized);
         let autostart = check("autostart".into(), platform::AUTOSTART_LABEL, platform::autostart_enabled());
+        let update = MenuItem::with_id("update", self.update.label(), !self.update.is_busy(), None);
+        let auto_update = check("autoupdate".into(), "Check for updates automatically", s.auto_update);
 
         let menu = Menu::new();
         let effect = Submenu::new("Effect", true);
@@ -313,6 +322,9 @@ impl App {
             &MenuItem::with_id("edit", "Settings (city, coordinates)…", true, None),
             &autostart,
             &PredefinedMenuItem::separator(),
+            &update,
+            &auto_update,
+            &PredefinedMenuItem::separator(),
             &MenuItem::with_id("exit", if cfg!(target_os = "macos") { "Quit" } else { "Exit" }, true, None),
         ]);
 
@@ -323,7 +335,7 @@ impl App {
         let mut builder = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
             .with_menu_on_left_click(true)
-            .with_tooltip(format!("{APP_NAME}\n{}", self.status_text()));
+            .with_tooltip(self.tooltip());
         if let Some(icon) = icon {
             builder = builder.with_icon(icon);
         }
@@ -342,6 +354,8 @@ impl App {
             rare,
             ignore_max,
             autostart,
+            update,
+            auto_update,
         });
     }
 
@@ -366,6 +380,7 @@ impl App {
         m.rare.set_checked(s.rare_events);
         m.ignore_max.set_checked(s.ignore_maximized);
         m.autostart.set_checked(platform::autostart_enabled());
+        m.auto_update.set_checked(s.auto_update);
     }
 
     /// The first, disabled line of the tray menu: the weather, or why nothing is shown.
@@ -382,8 +397,64 @@ impl App {
             m.weather.set_text(&text);
         }
         if let Some(t) = &self.tray {
-            let _ = t.set_tooltip(Some(format!("{APP_NAME}\n{text}")));
+            let _ = t.set_tooltip(Some(self.tooltip()));
         }
+    }
+
+    fn tooltip(&self) -> String {
+        let mut text = format!("{APP_NAME}\n{}", self.status_text());
+        if let Some(line) = self.update.tooltip() {
+            text = format!("{text}\n{line}");
+        }
+        text
+    }
+
+    // ------------------------------------------------------------ updates
+
+    fn update_reporter(&self) -> impl Fn(updater::Status) + Send + 'static {
+        let proxy = self.proxy.clone();
+        move |status| {
+            let _ = proxy.send_event(UserEvent::Update(status));
+        }
+    }
+
+    fn set_update_status(&mut self, event_loop: &ActiveEventLoop, status: updater::Status) {
+        self.update = status;
+        if let Some(m) = &self.menu {
+            m.update.set_text(self.update.label());
+            m.update.set_enabled(!self.update.is_busy());
+        }
+        self.update_weather_text();
+        if self.update == updater::Status::Restarting {
+            // the new version is starting and waits for this one to let go of the single-instance lock
+            self.quit(event_loop);
+        }
+    }
+
+    /// The update menu item: install what was found, or look (again).
+    fn on_update_clicked(&mut self, event_loop: &ActiveEventLoop) {
+        match self.update.clone() {
+            updater::Status::Available(release) => {
+                let status = updater::Status::Installing(release.version);
+                self.set_update_status(event_loop, status);
+                updater::install(release, self.update_reporter());
+            }
+            status if status.is_busy() => {}
+            _ => self.start_update_check(event_loop),
+        }
+    }
+
+    fn start_update_check(&mut self, event_loop: &ActiveEventLoop) {
+        self.next_update_check = Instant::now() + updater::CHECK_INTERVAL;
+        self.set_update_status(event_loop, updater::Status::Checking);
+        updater::check(self.update_reporter());
+    }
+
+    fn quit(&mut self, event_loop: &ActiveEventLoop) {
+        self.send(Command::Quit);
+        self.weather.stop();
+        self.tray = None;
+        event_loop.exit();
     }
 
     fn command(&mut self, event_loop: &ActiveEventLoop, id: &str) {
@@ -419,11 +490,13 @@ impl App {
                 self.send(Command::Spawn(arg.parse::<i32>().unwrap_or(-1)));
                 return;
             }
+            "autoupdate" => self.settings.auto_update = !self.settings.auto_update,
+            "update" => {
+                self.on_update_clicked(event_loop);
+                return;
+            }
             "exit" => {
-                self.send(Command::Quit);
-                self.weather.stop();
-                self.tray = None;
-                event_loop.exit();
+                self.quit(event_loop);
                 return;
             }
             _ => return,
@@ -459,6 +532,12 @@ impl App {
         }
         for o in &self.overlays {
             platform::raise_overlay(&o.window);
+        }
+        let check_due = self.settings.auto_update && Instant::now() >= self.next_update_check;
+        // an update already found stays on offer: no need to ask GitHub again
+        let idle = !self.update.is_busy() && !matches!(self.update, updater::Status::Available(_));
+        if check_due && idle {
+            self.start_update_check(event_loop);
         }
     }
 }
@@ -502,6 +581,7 @@ impl ApplicationHandler<UserEvent> for App {
                 self.retiring.clear();
             }
             UserEvent::Feedback(Feedback::NeedTargets) => self.build_overlays(event_loop),
+            UserEvent::Update(status) => self.set_update_status(event_loop, status),
         }
     }
 
@@ -527,10 +607,26 @@ impl ApplicationHandler<UserEvent> for App {
     }
 }
 
+/// The single-instance lock. Right after an update the old version may still be quitting: wait for it.
+fn acquire_instance() -> bool {
+    const ATTEMPTS: u32 = 50;
+    const PAUSE: Duration = Duration::from_millis(200);
+    let after_update = std::env::args().any(|a| a == updater::AFTER_UPDATE_ARG);
+    let attempts = if after_update { ATTEMPTS } else { 1 };
+    (0..attempts).any(|i| {
+        if i > 0 {
+            std::thread::sleep(PAUSE);
+        }
+        platform::init()
+    })
+}
+
 fn main() {
-    if !platform::init() {
+    if !acquire_instance() {
         return; // already running
     }
+    // only now: the files left by an update belonged to the instance that just quit
+    updater::cleanup_leftovers();
 
     let mut settings = Settings::load();
     if !settings::path().exists() {
@@ -598,6 +694,8 @@ fn main() {
         started: false,
         next_housekeeping: Instant::now(),
         overlay_problem: None,
+        update: updater::Status::Idle,
+        next_update_check: Instant::now() + updater::FIRST_CHECK_DELAY,
     };
     let _ = event_loop.run_app(&mut app);
     drop(app.proxy);
